@@ -1,0 +1,61 @@
+name: Build Hiddify Vietnamese APK
+
+on:
+  workflow_dispatch:
+
+env:
+  IS_GITHUB_ACTIONS: 1
+  FLUTTER_VERSION: '3.38.5'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2.21.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Hiddify dependencies
+        run: |
+          make android-apk-install-deps
+          echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+
+      - name: Prepare Hiddify Android
+        env:
+          CHANNEL: prod
+        run: |
+          make android-apk-prepare
+
+      - name: Build Hiddify APK
+        env:
+          CHANNEL: prod
+          SENTRY_DSN: ""
+        run: |
+          make android-apk-release
+
+      - name: Show generated APK files
+        run: |
+          find build/app/outputs -type f -name "*.apk"
+
+      - name: Upload ARM64 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hiddify-Vietnamese-ARM64
+          path: build/app/outputs/flutter-apk/*arm64-v8a*.apk
+          if-no-files-found: error
